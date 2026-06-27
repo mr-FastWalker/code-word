@@ -20,73 +20,35 @@
 
 ## Steps
 
-### Шаг 1 — Тема и MainActivity ✦ старт отсюда
-- [ ] Создать `ui/theme/Theme.kt` — Material3, цвета classic-скина (red, blue, grey, black)
-- [ ] Создать `ui/theme/Color.kt` — константы цветов команд
-- [ ] `MainActivity`: заменить `Activity` → `ComponentActivity`, добавить `setContent { CodeWordTheme { NavHost } }`
+### Шаг 1 — Тема и MainActivity ✦ DONE
+- [x] Создать `ui/theme/Color.kt` — константы цветов команд и карточек classic-скина ✅
+- [x] Создать `ui/theme/Theme.kt` — Material3 LightColorScheme + `CodeWordTheme` composable ✅
+- [x] `MainActivity`: `ComponentActivity` + `enableEdgeToEdge` + `setContent { CodeWordTheme { Surface } }` ✅
+- [x] `AndroidManifest`: добавлен `windowSoftInputMode="adjustResize"` для диалога ввода подсказки ✅
 
-### Шаг 2 — WordPackProvider + слова
-- [ ] Создать `data/WordPackProvider.kt` — объект с одним методом `getWords(locale, packId): List<String>`
-- [ ] Добавить список ~60 русских слов как константу внутри (для MVP без Firestore)
-- [ ] Добавить строки в `strings.xml`: названия экранов, подсказки UI, сообщения об ошибках
+### Шаг 2 — WordPackProvider + слова ✦ DONE
+- [x] Создать `data/WordPackProvider.kt` — `getWords(locale, packId)`, список из 60 русских слов ✅
+- [x] Добавить строки в `strings.xml`: команды, роли, статус-бар, диалог подсказки, экран итогов ✅
 
-### Шаг 3 — GameUiState + GameViewModel
-- [ ] `GameUiState` — data class:
-  ```
-  board: List<Card>
-  currentTeam: Team
-  phase: GamePhase          // CLUE | GUESS
-  clue: Clue?
-  guessesLeft: Int          // оставшиеся тапы из count; 0 = авто-переход хода
-  score: Score
-  winner: Team?
-  winReason: WinReason?     // ALL_CARDS | ASSASSIN
-  myRole: Role              // SPYMASTER | OPERATIVE
-  myTeam: Team              // RED | BLUE
-  ```
-- [ ] `WinReason` — enum (ALL_CARDS, ASSASSIN) — добавить в `core/model/`
-- [ ] `GameViewModel`:
-  - При старте: `WordPackProvider.getWords(...)`, случайный `startingTeam`, `GameEngine.generateBoard`
-  - `onClueSubmit(word, count)` → `GameEngine.submitClue`, устанавливает `guessesLeft = count`
-  - `onCardTap(card)` → `GameEngine.applyGuess`; по результату:
-    - `Correct` + `guessesLeft > 1` → декремент `guessesLeft`, продолжить
-    - `Correct` + `guessesLeft == 1` → `guessesLeft = 0`, **авто-переход хода**
-    - `WrongTeam` / `Assassin` → **немедленный переход хода** (или конец игры)
-    - `Win` → установить `winner` + `winReason`
-  - `resetGame()` — новая партия с теми же параметрами
-  - Exposed через `StateFlow<GameUiState>`
+### Шаг 3 — GameUiState + GameViewModel ✦ DONE
+- [x] `WinReason` enum (ALL_CARDS, ASSASSIN) в `core/model/` ✅
+- [x] `Team.opposite()` вынесен из приватного GameEngine в публичный метод `Team` ✅
+- [x] `GameUiState` с полями board, currentTeam, phase, clue, guessesLeft, score, winner, winReason, myRole, myTeam; computed: isMyTurn, isActiveSpymaster, isActiveOperative ✅
+- [x] `GameViewModel`: init, onClueSubmit, onCardTap (авто-переход по count и ошибке), resetGame, StateFlow ✅
 
-### Шаг 4 — Экран игры (GameScreen)
+### Шаг 4 — Экран игры (GameScreen) ✦ DONE
+- [x] `CardView`: flip-анимация (`animateFloatAsState` + `graphicsLayer rotationY`), два режима — spymaster видит light-цвета закрытых, operative видит бежевый ✅
+- [x] `BoardGrid`: `LazyVerticalGrid 5×5`, `key = card.id`, тапы блокируются если `!isActiveOperative || card.revealed` ✅
+- [x] `StatusBar`: команда + фаза + статус-текст + счёт + подсказка с `guessesLeft` (∞ для count=0) ✅
+- [x] `ClueInputDialog`: AlertDialog, два поля с валидацией, dismiss заблокирован (спаймастер обязан дать подсказку) ✅
+- [x] `GameScreen`: собирает всё, `LaunchedEffect` на winner → `onGameEnd()`, диалог только для `isActiveSpymaster` ✅
 
-#### 4a — CardView
-- [ ] Два режима рендера:
-  - **Spymaster**: все 25 карт с цветным фоном (цвет команды / нейтральный / убийца)
-  - **Operative**: закрытые карты — одинаковый нейтральный фон; цвет появляется только при `revealed = true`
-- [ ] Анимация переворота при `revealed` (`animateFloatAsState` + `graphicsLayer rotationY`)
-- [ ] На открытой карте: цветной фон + слово; у спаймастера ещё и текст цвета поверх закрытых
-
-#### 4b — BoardGrid
-- [ ] `LazyVerticalGrid(columns = Fixed(5))` из `CardView`
-- [ ] Тапы по карточкам блокируются (`enabled = false`) если: не твоя фаза / не твоя очередь / карта уже открыта
-
-#### 4c — StatusBar (верхняя полоска)
-- [ ] Чей ход + фаза (`RED • Подсказка` / `BLUE • Угадывает`)
-- [ ] Счёт: `redLeft` / `blueLeft`
-- [ ] Текущая подсказка: `СЛОВО × N` + `осталось: guessesLeft` (видно всем в фазе GUESS)
-
-#### 4d — ClueInputDialog
-- [ ] Показывается только активному спаймастеру в фазе CLUE
-- [ ] Поле ввода слова + поле числа (1–9, или 0 = «∞»)
-- [ ] Валидация: слово не пустое, число в диапазоне; кнопка «Дать подсказку»
-
-#### 4e — GameScreen (сборка)
-- [ ] Принимает `myRole: Role` + `myTeam: Team` (от навигации)
-- [ ] Собирает StatusBar + BoardGrid + ClueInputDialog
-- [ ] Если `winner != null` — навигация на ResultScreen
-
-### Шаг 5 — Навигация
-- [ ] `NavGraph.kt` с маршрутами: `start` → `game/{myRole}/{myTeam}`
-- [ ] `StartScreen`: 4 кнопки (RED Спаймастер / RED Оперативник / BLUE Спаймастер / BLUE Оперативник) — для тестирования всех 4 ролей локально
+### Шаг 5 — Навигация ✦ DONE
+- [x] `StartScreen`: 4 кнопки по 2 на команду (Filled = Спаймастер, Outlined = Оперативник) ✅
+- [x] `NavGraph.kt`: маршруты `start` → `game/{myRole}/{myTeam}` → `result/{winner}/{winReason}/{myRole}/{myTeam}` ✅
+- [x] "Play Again" из ResultScreen: `navigate(game) { popUpTo(start) }` — новая игра с той же ролью ✅
+- [x] `ResultScreen` заглушка (полная реализация — шаг 6) ✅
+- [x] `MainActivity`: подключён `CodeWordNavGraph()` ✅
 
 ### Шаг 6 — ResultScreen
 - [ ] Текст победителя + причина (все карты открыты / убийца)

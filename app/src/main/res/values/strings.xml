@@ -1,3 +1,46 @@
 <resources>
     <string name="app_name">Code-Word</string>
+
+    <!-- Teams -->
+    <string name="team_red">Красные</string>
+    <string name="team_blue">Синие</string>
+
+    <!-- Roles -->
+    <string name="role_spymaster">Спаймастер</string>
+    <string name="role_operative">Оперативник</string>
+
+    <!-- Start screen -->
+    <string name="start_title">Code-Word</string>
+    <string name="start_play_as">Играть за</string>
+    <string name="start_red_spymaster">Красный спаймастер</string>
+    <string name="start_red_operative">Красный оперативник</string>
+    <string name="start_blue_spymaster">Синий спаймастер</string>
+    <string name="start_blue_operative">Синий оперативник</string>
+
+    <!-- Game screen — status bar -->
+    <string name="game_phase_clue">Подсказка</string>
+    <string name="game_phase_guess">Угадывает</string>
+    <string name="game_status_waiting_clue">%1$s думает…</string>
+    <string name="game_status_your_turn_clue">Ваш ход — дайте подсказку</string>
+    <string name="game_status_waiting_guess">%1$s угадывает</string>
+    <string name="game_status_your_turn_guess">Ваш ход — выберите карту</string>
+    <string name="game_clue_label">%1$s × %2$d</string>
+    <string name="game_guesses_left">осталось: %1$d</string>
+    <string name="game_score">🔴 %1$d  🔵 %2$d</string>
+
+    <!-- Clue input dialog -->
+    <string name="clue_dialog_title">Дать подсказку</string>
+    <string name="clue_dialog_word_hint">Слово-подсказка</string>
+    <string name="clue_dialog_count_hint">Количество (0–9)</string>
+    <string name="clue_dialog_submit">Дать подсказку</string>
+    <string name="clue_dialog_cancel">Отмена</string>
+    <string name="clue_error_blank_word">Слово не может быть пустым</string>
+    <string name="clue_error_invalid_count">Число от 0 до 9</string>
+
+    <!-- Result screen -->
+    <string name="result_win_title">%1$s победили!</string>
+    <string name="result_reason_all_cards">Все карты открыты</string>
+    <string name="result_reason_assassin">Соперник вскрыл убийцу</string>
+    <string name="result_play_again">Играть снова</string>
+    <string name="result_exit">Выйти</string>
 </resources>

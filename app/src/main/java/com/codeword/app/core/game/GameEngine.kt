@@ -80,9 +80,4 @@ object GameEngine {
         Team.RED -> CardColor.RED
         Team.BLUE -> CardColor.BLUE
     }
-
-    private fun Team.opposite(): Team = when (this) {
-        Team.RED -> Team.BLUE
-        Team.BLUE -> Team.RED
-    }
 }

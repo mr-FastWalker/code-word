@@ -17,6 +17,9 @@ google-services.json
 *.jks
 keystore.properties
 
+# JVM heap dumps
+*.hprof
+
 # OS
 .DS_Store
 Thumbs.db
