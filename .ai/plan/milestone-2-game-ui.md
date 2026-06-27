@@ -50,10 +50,11 @@
 - [x] `ResultScreen` заглушка (полная реализация — шаг 6) ✅
 - [x] `MainActivity`: подключён `CodeWordNavGraph()` ✅
 
-### Шаг 6 — ResultScreen
-- [ ] Текст победителя + причина (все карты открыты / убийца)
-- [ ] Кнопка «Играть снова» → `viewModel.resetGame()`, назад на GameScreen
-- [ ] Кнопка «Выйти» → на StartScreen
+### Шаг 6 — ResultScreen ✦ DONE
+- [x] Фон в цвете победившей команды (light, alpha 0.4), кружок команды ✅
+- [x] Заголовок из `result_win_title` + строка причины (`result_reason_assassin` / `result_reason_all_cards`) ✅
+- [x] «Играть снова» → `navigate(game) { popUpTo(start) }` — новая игра с той же ролью ✅
+- [x] «Выйти» → `popBackStack(start)` ✅
 
 ### Шаг 7 — Ручная проверка
 - [ ] Прогнать полную партию от spymaster RED: подсказка → operative RED угадывает верно × count → ход переходит автоматически

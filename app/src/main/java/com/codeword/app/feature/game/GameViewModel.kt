@@ -17,11 +17,21 @@ import kotlinx.coroutines.flow.update
 
 class GameViewModel : ViewModel() {
 
+    private var gameStarted = false
+
     private val _uiState = MutableStateFlow(buildInitialState(Role.SPYMASTER, Team.RED))
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     fun init(myRole: Role, myTeam: Team) {
-        _uiState.value = buildInitialState(myRole, myTeam)
+        val current = _uiState.value
+        if (!gameStarted || current.winner != null) {
+            // Первый запуск или игра завершена — новый борд
+            _uiState.value = buildInitialState(myRole, myTeam)
+            gameStarted = true
+        } else {
+            // Игра идёт — только меняем перспективу (смена роли при локальном тесте)
+            _uiState.update { it.copy(myRole = myRole, myTeam = myTeam) }
+        }
     }
 
     fun onClueSubmit(word: String, count: Int) {

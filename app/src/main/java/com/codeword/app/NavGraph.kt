@@ -51,8 +51,8 @@ fun CodeWordNavGraph() {
                 myTeam = myTeam,
                 onGameEnd = { winner, winReason ->
                     navController.navigate(Routes.result(winner, winReason, myRole, myTeam)) {
-                        // не добавляем result в back stack поверх другого result
-                        launchSingleTop = true
+                        // убираем GameScreen из стека — нет петли навигации при возврате назад
+                        popUpTo(Routes.GAME) { inclusive = true }
                     }
                 },
             )
