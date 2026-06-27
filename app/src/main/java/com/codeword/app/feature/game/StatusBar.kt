@@ -2,15 +2,21 @@ package com.codeword.app.feature.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,8 +44,11 @@ fun StatusBar(state: GameUiState, modifier: Modifier = Modifier) {
             TurnLabel(state)
             ScoreLabel(redLeft = state.score.redLeft, blueLeft = state.score.blueLeft)
         }
+        // Always reserve space so the layout doesn't jump when clue appears/disappears
         if (state.phase == GamePhase.GUESS && state.clue != null) {
             ClueLabel(state)
+        } else {
+            Box(modifier = Modifier.fillMaxWidth().height(22.dp))
         }
     }
 }
@@ -81,7 +90,9 @@ private fun ScoreLabel(redLeft: Int, blueLeft: Int) {
 @Composable
 private fun ClueLabel(state: GameUiState) {
     val clue = state.clue ?: return
-    val guessesText = if (state.guessesLeft == Int.MAX_VALUE) "осталось: ∞" else "осталось: ${state.guessesLeft}"
+    val teamColor = if (state.currentTeam == Team.RED) CardRed else CardBlue
+    val isUnlimited = state.guessesLeft == Int.MAX_VALUE
+    val used = if (isUnlimited) 0 else clue.count - state.guessesLeft
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -89,14 +100,41 @@ private fun ClueLabel(state: GameUiState) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "${clue.word.uppercase()} × ${clue.count}",
+            text = "${clue.word.uppercase()} × ${if (clue.count == 0) "∞" else clue.count}",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
         )
-        Text(
-            text = guessesText,
-            fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        )
+        if (isUnlimited) {
+            Text(
+                text = "∞",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = teamColor,
+            )
+        } else {
+            GuessTokens(
+                total = clue.count,
+                used = used,
+                teamColor = teamColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GuessTokens(total: Int, used: Int, teamColor: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        repeat(total) { index ->
+            val isSpent = index < used
+            Box(
+                modifier = Modifier
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSpent) teamColor.copy(alpha = 0.25f)
+                        else teamColor
+                    ),
+            )
+        }
     }
 }

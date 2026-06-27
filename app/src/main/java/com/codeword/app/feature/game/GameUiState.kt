@@ -24,4 +24,7 @@ data class GameUiState(
     val isMyTurn: Boolean get() = currentTeam == myTeam
     val isActiveSpymaster: Boolean get() = isMyTurn && myRole == Role.SPYMASTER && phase == GamePhase.CLUE
     val isActiveOperative: Boolean get() = isMyTurn && myRole == Role.OPERATIVE && phase == GamePhase.GUESS
+
+    // Сколько карточек команды осталось — это и есть потолок для count подсказки
+    val myTeamCardsLeft: Int get() = if (myTeam == Team.RED) score.redLeft else score.blueLeft
 }

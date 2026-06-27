@@ -1,6 +1,8 @@
 package com.codeword.app.feature.game
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codeword.app.core.model.Role
@@ -46,17 +49,34 @@ fun GameScreen(
             state = state,
             modifier = Modifier.fillMaxWidth(),
         )
-        BoardGrid(
-            board = state.board,
-            myRole = state.myRole,
-            isActiveOperative = state.isActiveOperative,
-            onCardTap = viewModel::onCardTap,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-        )
-        if (state.isActiveSpymaster) {
-            ClueInputPanel(onSubmit = viewModel::onClueSubmit)
+        ) {
+            BoardGrid(
+                board = state.board,
+                myRole = state.myRole,
+                isActiveOperative = state.isActiveOperative,
+                onCardTap = viewModel::onCardTap,
+                modifier = Modifier.fillMaxSize(),
+            )
+            val showOverlay = if (state.myRole == Role.SPYMASTER) !state.isMyTurn else !state.isActiveOperative
+            if (showOverlay) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.White.copy(alpha = 0.7f)),
+                )
+            }
+        }
+        if (state.myRole == Role.SPYMASTER) {
+            ClueInputPanel(
+                myTeam = state.myTeam,
+                maxCount = state.myTeamCardsLeft,
+                enabled = state.isActiveSpymaster,
+                onSubmit = viewModel::onClueSubmit,
+            )
         }
     }
 }
