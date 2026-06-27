@@ -1,6 +1,15 @@
+# Gradle
 .gradle/
 build/
 local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+captures/
+.navigation/
+.externalNativeBuild/
+.cxx/
 
 # Sensitive — NEVER commit these
 google-services.json
@@ -8,4 +17,9 @@ google-services.json
 *.jks
 keystore.properties
 
+# OS
 .DS_Store
+Thumbs.db
+
+# Working / planning docs (content is in CLAUDE.md)
+description.md
