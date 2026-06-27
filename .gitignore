@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+
+# Sensitive — NEVER commit these
+google-services.json
+*.keystore
+*.jks
+keystore.properties
+
+.DS_Store
