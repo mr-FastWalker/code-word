@@ -1,6 +1,5 @@
 package com.codeword.app.feature.game
 
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,13 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codeword.app.core.model.Role
 import com.codeword.app.core.model.Team
@@ -22,22 +22,29 @@ import com.codeword.app.core.model.WinReason
 
 @Composable
 fun GameScreen(
-    myRole: Role,
-    myTeam: Team,
-    onGameEnd: (winner: Team, winReason: WinReason) -> Unit,
-    viewModel: GameViewModel = viewModel(LocalContext.current as ComponentActivity),
+    roomCode: String,
+    uid: String,
+    onGameEnd: (winner: Team, winReason: WinReason, myRole: Role, myTeam: Team) -> Unit,
+    viewModel: GameViewModel = viewModel(factory = GameViewModel.factory(roomCode, uid)),
 ) {
-    LaunchedEffect(myRole, myTeam) {
-        viewModel.init(myRole, myTeam)
-    }
-
     val state by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(state.winner) {
-        val winner = state.winner
-        val reason = state.winReason
-        if (winner != null && reason != null) onGameEnd(winner, reason)
+    LaunchedEffect(state?.winner) {
+        val winner = state?.winner ?: return@LaunchedEffect
+        val reason = state?.winReason ?: return@LaunchedEffect
+        val myRole = state?.myRole ?: return@LaunchedEffect
+        val myTeam = state?.myTeam ?: return@LaunchedEffect
+        onGameEnd(winner, reason, myRole, myTeam)
     }
+
+    if (state == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val s = state!!
 
     Column(
         modifier = Modifier
@@ -46,7 +53,7 @@ fun GameScreen(
             .imePadding(),
     ) {
         StatusBar(
-            state = state,
+            state = s,
             modifier = Modifier.fillMaxWidth(),
         )
         Box(
@@ -55,13 +62,13 @@ fun GameScreen(
                 .weight(1f),
         ) {
             BoardGrid(
-                board = state.board,
-                myRole = state.myRole,
-                isActiveOperative = state.isActiveOperative,
+                board = s.board,
+                myRole = s.myRole,
+                isActiveOperative = s.isActiveOperative,
                 onCardTap = viewModel::onCardTap,
                 modifier = Modifier.fillMaxSize(),
             )
-            val showOverlay = if (state.myRole == Role.SPYMASTER) !state.isMyTurn else !state.isActiveOperative
+            val showOverlay = if (s.myRole == Role.SPYMASTER) !s.isMyTurn else !s.isActiveOperative
             if (showOverlay) {
                 Box(
                     modifier = Modifier
@@ -70,11 +77,11 @@ fun GameScreen(
                 )
             }
         }
-        if (state.myRole == Role.SPYMASTER) {
+        if (s.myRole == Role.SPYMASTER) {
             ClueInputPanel(
-                myTeam = state.myTeam,
-                maxCount = state.myTeamCardsLeft,
-                enabled = state.isActiveSpymaster,
+                myTeam = s.myTeam,
+                maxCount = s.myTeamCardsLeft,
+                enabled = s.isActiveSpymaster,
                 onSubmit = viewModel::onClueSubmit,
             )
         }

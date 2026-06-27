@@ -1,9 +1,10 @@
 package com.codeword.app.core.model
 
 data class Player(
-    val uid: String,
-    val name: String,
-    val team: Team,
-    val role: Role,
-    val connected: Boolean = true
+    val uid: String = "",
+    val name: String = "",
+    val team: Team = Team.RED,
+    val role: Role = Role.OPERATIVE,
+    val connected: Boolean = true,
+    val ready: Boolean = false,
 )

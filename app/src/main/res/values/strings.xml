@@ -37,6 +37,28 @@
     <string name="clue_error_blank_word">Слово не может быть пустым</string>
     <string name="clue_error_invalid_count">Число от 0 до 9</string>
 
+    <!-- Home screen -->
+    <string name="home_your_name">Ваше имя</string>
+    <string name="home_create_room">Создать комнату</string>
+    <string name="home_or">или</string>
+    <string name="home_room_code_hint">Код комнаты</string>
+    <string name="home_join_button">Войти</string>
+    <string name="home_error_name_empty">Введите имя</string>
+    <string name="home_error_code_length">Код — 6 символов</string>
+
+    <!-- Lobby screen -->
+    <string name="lobby_share_hint">Поделитесь кодом с друзьями</string>
+    <string name="lobby_teams_title">Команды</string>
+    <string name="lobby_slot_empty">Свободно</string>
+    <string name="lobby_team_red">Красные</string>
+    <string name="lobby_team_blue">Синие</string>
+    <string name="lobby_role_spymaster">Спаймастер</string>
+    <string name="lobby_role_operative">Оперативник</string>
+    <string name="lobby_ready">Готов</string>
+    <string name="lobby_not_ready">Не готов</string>
+    <string name="lobby_start_game">Начать игру</string>
+    <string name="lobby_waiting_host">Ожидаем хоста…</string>
+
     <!-- Result screen -->
     <string name="result_win_title">%1$s победили!</string>
     <string name="result_reason_all_cards">Все карты открыты</string>

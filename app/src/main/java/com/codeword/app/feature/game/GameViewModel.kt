@@ -1,106 +1,123 @@
 package com.codeword.app.feature.game
 
 import androidx.lifecycle.ViewModel
-import com.codeword.app.core.game.GameEngine
-import com.codeword.app.core.game.GameResult
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.codeword.app.core.model.Card
+import com.codeword.app.core.model.CardColor
+import com.codeword.app.core.model.Clue
 import com.codeword.app.core.model.GamePhase
 import com.codeword.app.core.model.Role
+import com.codeword.app.core.model.Room
 import com.codeword.app.core.model.Team
-import com.codeword.app.core.model.Score
 import com.codeword.app.core.model.WinReason
-import com.codeword.app.data.WordPackProvider
+import com.codeword.app.data.RoomRepository
+import com.codeword.app.data.RoomRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class GameViewModel : ViewModel() {
+class GameViewModel(
+    private val roomCode: String,
+    private val uid: String,
+    private val roomRepository: RoomRepository = RoomRepositoryImpl(),
+) : ViewModel() {
 
-    private var gameStarted = false
+    private val _room = MutableStateFlow<Room?>(null)
 
-    private val _uiState = MutableStateFlow(buildInitialState(Role.SPYMASTER, Team.RED))
-    val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<GameUiState?> = _room
+        .map { it?.toGameUiState(uid) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun init(myRole: Role, myTeam: Team) {
-        val current = _uiState.value
-        if (!gameStarted || current.winner != null) {
-            // Первый запуск или игра завершена — новый борд
-            _uiState.value = buildInitialState(myRole, myTeam)
-            gameStarted = true
-        } else {
-            // Игра идёт — только меняем перспективу (смена роли при локальном тесте)
-            _uiState.update { it.copy(myRole = myRole, myTeam = myTeam) }
+    init {
+        viewModelScope.launch {
+            roomRepository.observeRoom(roomCode).collect { _room.value = it }
         }
     }
 
     fun onClueSubmit(word: String, count: Int) {
-        val clue = GameEngine.submitClue(word, count)
-        // count == 0 means unlimited: use Int.MAX_VALUE so decrement logic stays uniform
-        val guessesLeft = if (count == 0) Int.MAX_VALUE else count
-        _uiState.update { it.copy(clue = clue, phase = GamePhase.GUESS, guessesLeft = guessesLeft) }
+        viewModelScope.launch {
+            roomRepository.submitClue(roomCode, Clue(word, count))
+        }
     }
 
     fun onCardTap(card: Card) {
-        val state = _uiState.value
-        if (state.winner != null || state.phase != GamePhase.GUESS) return
+        val room = _room.value ?: return
+        val player = room.players[uid] ?: return
 
-        val (updatedBoard, result) = GameEngine.applyGuess(state.board, card, state.currentTeam)
+        if (room.turn.currentTeam != player.team) return
+        if (player.role != Role.OPERATIVE) return
+        if (room.turn.phase != GamePhase.GUESS) return
+        if (card.revealed) return
 
-        _uiState.update {
-            when (result) {
-                is GameResult.Correct -> {
-                    if (state.guessesLeft > 1) {
-                        it.copy(board = updatedBoard, score = result.score, guessesLeft = state.guessesLeft - 1)
-                    } else {
-                        it.passTurn(updatedBoard, result.score)
+        viewModelScope.launch {
+            val clueCount = room.turn.clue?.count ?: 0
+            val maxGuesses = if (clueCount == 0) Int.MAX_VALUE else clueCount + 1
+            val newGuessesMade = room.turn.guessesMade + 1
+            val currentTeam = room.turn.currentTeam
+            val isMyCard = (currentTeam == Team.RED && card.color == CardColor.RED) ||
+                    (currentTeam == Team.BLUE && card.color == CardColor.BLUE)
+
+            when {
+                card.color == CardColor.ASSASSIN -> {
+                    roomRepository.revealCard(roomCode, card, newGuessesMade)
+                    roomRepository.endGame(roomCode, currentTeam.opposite(), WinReason.ASSASSIN)
+                }
+
+                isMyCard -> {
+                    // score is derived from cards in mapper, compute new value for win-check
+                    val teamCardsLeft = when (currentTeam) {
+                        Team.RED -> room.score.redLeft - 1
+                        Team.BLUE -> room.score.blueLeft - 1
+                    }
+                    when {
+                        teamCardsLeft <= 0 -> {
+                            roomRepository.revealCard(roomCode, card, newGuessesMade)
+                            roomRepository.endGame(roomCode, currentTeam, WinReason.ALL_CARDS)
+                        }
+                        newGuessesMade >= maxGuesses -> {
+                            roomRepository.revealCard(roomCode, card, newGuessesMade)
+                            roomRepository.passTurn(roomCode, currentTeam.opposite())
+                        }
+                        else -> roomRepository.revealCard(roomCode, card, newGuessesMade)
                     }
                 }
-                is GameResult.WrongTeam -> it.passTurn(updatedBoard, result.score)
-                is GameResult.Assassin -> it.copy(
-                    board = updatedBoard,
-                    winner = state.currentTeam.opposite(),
-                    winReason = WinReason.ASSASSIN,
-                )
-                is GameResult.Win -> it.copy(
-                    board = updatedBoard,
-                    score = result.score,
-                    winner = result.winner,
-                    winReason = WinReason.ALL_CARDS,
-                )
+
+                else -> { // wrong team or neutral
+                    roomRepository.revealCard(roomCode, card, newGuessesMade)
+                    roomRepository.passTurn(roomCode, currentTeam.opposite())
+                }
             }
         }
     }
 
-    fun resetGame() {
-        val state = _uiState.value
-        _uiState.value = buildInitialState(state.myRole, state.myTeam)
+    companion object {
+        fun factory(roomCode: String, uid: String) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                GameViewModel(roomCode, uid) as T
+        }
     }
+}
 
-    private fun GameUiState.passTurn(updatedBoard: List<Card>, score: Score) = copy(
-        board = updatedBoard,
+private fun Room.toGameUiState(uid: String): GameUiState? {
+    val player = players[uid] ?: return null
+    val clueCount = turn.clue?.count ?: 0
+    val guessesLeft = if (clueCount == 0) Int.MAX_VALUE
+    else (clueCount + 1 - turn.guessesMade).coerceAtLeast(0)
+    return GameUiState(
+        board = cards,
+        currentTeam = turn.currentTeam,
+        phase = turn.phase,
+        clue = turn.clue,
+        guessesLeft = guessesLeft,
         score = score,
-        phase = GamePhase.CLUE,
-        currentTeam = currentTeam.opposite(),
-        clue = null,
-        guessesLeft = 0,
+        winner = winner,
+        winReason = winReason,
+        myRole = player.role,
+        myTeam = player.team,
     )
-
-    private fun buildInitialState(myRole: Role, myTeam: Team): GameUiState {
-        val words = WordPackProvider.getWords(locale = "ru", packId = "ru_base")
-        val startingTeam = if ((0..1).random() == 0) Team.RED else Team.BLUE
-        val board = GameEngine.generateBoard(words, startingTeam)
-        return GameUiState(
-            board = board,
-            currentTeam = startingTeam,
-            phase = GamePhase.CLUE,
-            clue = null,
-            guessesLeft = 0,
-            score = GameEngine.calculateScore(board),
-            winner = null,
-            winReason = null,
-            myRole = myRole,
-            myTeam = myTeam,
-        )
-    }
 }
