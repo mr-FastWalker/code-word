@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)
     implementation(libs.coroutines.android)
+    implementation(libs.coroutines.play.services)
     implementation(libs.datastore.preferences)
     implementation(libs.play.services.auth)
 
