@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.codeword.app.core.game.GameEngine
+import com.codeword.app.core.model.Player
 import com.codeword.app.core.model.Role
 import com.codeword.app.core.model.Room
 import com.codeword.app.core.model.Team
@@ -36,15 +37,19 @@ class LobbyViewModel(
         }
     }
 
-    fun startGame() {
+    fun startGame(isPrivate: Boolean = false) {
         viewModelScope.launch {
             val room = room.value ?: return@launch
             val words = WordPackProvider.getWords(room.config.locale, room.config.wordPackId)
             val startingTeam = if ((0..1).random() == 0) Team.RED else Team.BLUE
             val board = GameEngine.generateBoard(words, startingTeam)
-            roomRepository.startGame(roomCode, uid, board, startingTeam)
+            roomRepository.startGame(roomCode, uid, board, startingTeam, isPrivate)
         }
     }
+
+    /** Минимальное условие: хотя бы 2 игрока взяли игровые роли (не зрители). */
+    fun canStartGame(players: Map<String, Player>): Boolean =
+        players.values.count { it.role != Role.SPECTATOR } >= 2
 
     companion object {
         fun factory(roomCode: String, uid: String) = object : ViewModelProvider.Factory {

@@ -21,7 +21,8 @@ data class GameUiState(
     val myRole: Role,
     val myTeam: Team,
 ) {
-    val isMyTurn: Boolean get() = currentTeam == myTeam
+    val isSpectator: Boolean get() = myRole == Role.SPECTATOR
+    val isMyTurn: Boolean get() = !isSpectator && currentTeam == myTeam
     val isActiveSpymaster: Boolean get() = isMyTurn && myRole == Role.SPYMASTER && phase == GamePhase.CLUE
     val isActiveOperative: Boolean get() = isMyTurn && myRole == Role.OPERATIVE && phase == GamePhase.GUESS
 

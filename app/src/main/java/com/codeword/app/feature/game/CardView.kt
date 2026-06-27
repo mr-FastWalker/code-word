@@ -119,7 +119,7 @@ private fun CardColor.frontColor(myRole: Role): Color = when (myRole) {
         CardColor.NEUTRAL -> CardNeutralLight
         CardColor.ASSASSIN -> CardAssassinLight
     }
-    Role.OPERATIVE -> CardUnrevealed
+    Role.OPERATIVE, Role.SPECTATOR -> CardUnrevealed
 }
 
 private fun CardColor.frontTextColor(myRole: Role): Color = when (myRole) {
@@ -127,7 +127,7 @@ private fun CardColor.frontTextColor(myRole: Role): Color = when (myRole) {
         CardColor.ASSASSIN -> Color.White
         else -> CardUnrevealedText
     }
-    Role.OPERATIVE -> CardUnrevealedText
+    Role.OPERATIVE, Role.SPECTATOR -> CardUnrevealedText
 }
 
 // Revealed card color — full saturation, same for both roles

@@ -13,4 +13,5 @@ data class Room(
     val score: Score = Score(0, 0),
     val winner: Team? = null,
     val winReason: WinReason? = null,
+    val isPrivate: Boolean = false,
 )

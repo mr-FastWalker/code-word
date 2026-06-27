@@ -11,19 +11,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +55,7 @@ fun LobbyScreen(
     viewModel: LobbyViewModel = viewModel(factory = LobbyViewModel.factory(roomCode, uid)),
 ) {
     val room by viewModel.room.collectAsState()
+    var isPrivate by remember { mutableStateOf(false) }
 
     LaunchedEffect(room?.status) {
         if (room?.status == GameStatus.PLAYING) onGameStarted()
@@ -69,6 +75,8 @@ fun LobbyScreen(
     fun slotOwner(role: Role, team: Team): Player? =
         players.values.find { it.role == role && it.team == team }
 
+    val spectators = players.values.filter { it.role == Role.SPECTATOR }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -83,21 +91,19 @@ fun LobbyScreen(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
         Text(
             text = roomCode,
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             letterSpacing = 6.sp,
         )
-
         Text(
             text = "Поделитесь кодом с друзьями",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
         HorizontalDivider()
         Spacer(Modifier.height(16.dp))
 
@@ -106,7 +112,6 @@ fun LobbyScreen(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.fillMaxWidth(),
         )
-
         Spacer(Modifier.height(12.dp))
 
         Row(
@@ -143,8 +148,35 @@ fun LobbyScreen(
             )
         }
 
+        // ─── Зрители ────────────────────────────────────────────────────────
+        if (spectators.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Зрители",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                spectators.forEach { p ->
+                    Text(
+                        text = if (p.ready) "${p.name} ✓" else p.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (p.ready) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.weight(1f))
 
+        // ─── Готов ──────────────────────────────────────────────────────────
         val isReady = myPlayer?.ready ?: false
         OutlinedButton(
             onClick = { viewModel.toggleReady() },
@@ -155,12 +187,31 @@ fun LobbyScreen(
 
         Spacer(Modifier.height(8.dp))
 
+        // ─── Хост: настройки + старт ─────────────────────────────────────────
         if (isHost) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Закрыть комнату во время игры",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Switch(
+                    checked = isPrivate,
+                    onCheckedChange = { isPrivate = it },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
+            val canStart = viewModel.canStartGame(players)
             Button(
-                onClick = { viewModel.startGame() },
+                onClick = { viewModel.startGame(isPrivate) },
+                enabled = canStart,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Начать игру")
+                Text(if (canStart) "Начать игру" else "Нужно хотя бы 2 игрока")
             }
         } else {
             Text(
@@ -178,6 +229,8 @@ fun LobbyScreen(
         Spacer(Modifier.navigationBarsPadding())
     }
 }
+
+// ─── TeamColumn ──────────────────────────────────────────────────────────────
 
 @Composable
 private fun TeamColumn(
@@ -205,7 +258,6 @@ private fun TeamColumn(
             color = color,
             fontWeight = FontWeight.SemiBold,
         )
-
         SlotCard(
             roleLabel = "Спаймастер",
             owner = spymasterOwner,
@@ -215,7 +267,6 @@ private fun TeamColumn(
             isOccupiedByOther = spymasterOwner != null && spymasterOwner.uid != myUid,
             onClick = onClaimSpymaster,
         )
-
         SlotCard(
             roleLabel = "Оперативник",
             owner = operativeOwner,
@@ -227,6 +278,8 @@ private fun TeamColumn(
         )
     }
 }
+
+// ─── SlotCard ────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SlotCard(
@@ -263,12 +316,21 @@ private fun SlotCard(
             fontWeight = if (isMine) FontWeight.SemiBold else FontWeight.Normal,
         )
         Spacer(Modifier.height(4.dp))
+        // Имя + галочка готовности
+        val nameText = when {
+            owner == null -> "Свободно"
+            owner.ready -> "${owner.name} ✓"
+            else -> owner.name
+        }
         Text(
-            text = owner?.name ?: "Свободно",
+            text = nameText,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isMine) FontWeight.Bold else FontWeight.Normal,
-            color = if (owner == null) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
+            color = when {
+                owner == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                owner.ready -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurface
+            },
             textAlign = TextAlign.Center,
             maxLines = 1,
         )

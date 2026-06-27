@@ -28,7 +28,7 @@ interface RoomRepository {
     suspend fun setReady(code: String, uid: String, isReady: Boolean)
 
     /** Хост запускает игру: записывает борд и меняет статус на playing. */
-    suspend fun startGame(code: String, uid: String, board: List<Card>, startingTeam: Team)
+    suspend fun startGame(code: String, uid: String, board: List<Card>, startingTeam: Team, isPrivate: Boolean = false)
 
     // ─── Игровые действия (Milestone 5) ─────────────────────────────────
 
@@ -47,5 +47,6 @@ interface RoomRepository {
 sealed class RoomError(message: String) : Exception(message) {
     class NotFound(code: String) : RoomError("Room '$code' not found")
     class NotWaiting(code: String) : RoomError("Room '$code' is not in waiting state")
+    class GameInProgress(code: String) : RoomError("Room '$code' is private and game is in progress")
     class CreateFailed : RoomError("Failed to create room after multiple attempts")
 }

@@ -25,14 +25,10 @@ class RoomRepositoryImpl : RoomRepository {
         repeat(MAX_CREATE_ATTEMPTS) {
             val code = generateRoomCode()
             val docRef = rooms.document(code)
-
             val created = firestore.runTransaction { tx ->
-                if (!tx.get(docRef).exists()) {
-                    tx.set(docRef, initialRoomData(code, hostUid, hostName))
-                    true
-                } else false
+                if (!tx.get(docRef).exists()) { tx.set(docRef, initialRoomData(code, hostUid, hostName)); true }
+                else false
             }.await()
-
             if (created) return code
         }
         throw RoomError.CreateFailed()
@@ -42,6 +38,7 @@ class RoomRepositoryImpl : RoomRepository {
         "schemaVersion" to 1,
         "hostUid" to hostUid,
         "status" to "waiting",
+        "isPrivate" to false,
         "createdAt" to FieldValue.serverTimestamp(),
         "updatedAt" to FieldValue.serverTimestamp(),
         "config" to mapOf("locale" to "ru", "wordPackId" to "ru_base", "skinId" to "classic"),
@@ -52,7 +49,7 @@ class RoomRepositoryImpl : RoomRepository {
             hostUid to mapOf(
                 "name" to hostName,
                 "team" to "red",
-                "role" to "operative",
+                "role" to "spectator",   // host starts as spectator, picks slot in lobby
                 "connected" to true,
                 "ready" to false,
             )
@@ -69,30 +66,42 @@ class RoomRepositoryImpl : RoomRepository {
         val snapshot = docRef.get().await()
 
         if (!snapshot.exists()) throw RoomError.NotFound(code)
-        if (snapshot.getString("status") != "waiting") throw RoomError.NotWaiting(code)
 
-        docRef.update(
+        val status = snapshot.getString("status") ?: "waiting"
+        when {
+            status == "finished" -> throw RoomError.NotWaiting(code)
+            status == "playing" && (snapshot.getBoolean("isPrivate") == true) ->
+                throw RoomError.GameInProgress(code)
+            // status == "waiting" OR (status == "playing" && !isPrivate) → зритель может войти
+        }
+
+        // Если игрок уже в комнате — просто обновляем connected, не сбрасываем роль
+        val alreadyIn = (snapshot.get("players.$uid") != null)
+        val update = if (alreadyIn) {
+            mapOf(
+                "players.$uid.connected" to true,
+                "updatedAt" to FieldValue.serverTimestamp(),
+            )
+        } else {
             mapOf(
                 "players.$uid" to mapOf(
                     "name" to name,
                     "team" to "red",
-                    "role" to "operative",
+                    "role" to "spectator",
                     "connected" to true,
                     "ready" to false,
                 ),
                 "updatedAt" to FieldValue.serverTimestamp(),
             )
-        ).await()
+        }
+        docRef.update(update).await()
     }
 
     // ─── Realtime listener ───────────────────────────────────────────────────
 
     override fun observeRoom(code: String): Flow<Room?> = callbackFlow {
         val listener = rooms.document(code).addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                close(error)
-                return@addSnapshotListener
-            }
+            if (error != null) { close(error); return@addSnapshotListener }
             trySend(snapshot?.takeIf { it.exists() }?.toRoom())
         }
         awaitClose { listener.remove() }
@@ -120,13 +129,15 @@ class RoomRepositoryImpl : RoomRepository {
         ).await()
     }
 
-    override suspend fun startGame(code: String, uid: String, board: List<Card>, startingTeam: Team) {
+    override suspend fun startGame(
+        code: String, uid: String, board: List<Card>, startingTeam: Team, isPrivate: Boolean,
+    ) {
         val redLeft = board.count { it.color == CardColor.RED }
         val blueLeft = board.count { it.color == CardColor.BLUE }
-
         rooms.document(code).update(
             mapOf(
                 "status" to "playing",
+                "isPrivate" to isPrivate,
                 "cards" to board.map { it.toFirestoreMap() },
                 "startingTeam" to startingTeam.name.lowercase(),
                 "turn" to mapOf(
@@ -165,13 +176,11 @@ class RoomRepositoryImpl : RoomRepository {
             val updated = rawCards.map { c ->
                 if ((c["id"] as? Long)?.toInt() == card.id) c + ("revealed" to true) else c
             }
-            tx.update(
-                docRef, mapOf(
-                    "cards" to updated,
-                    "turn.guessesMade" to guessesMade,
-                    "updatedAt" to FieldValue.serverTimestamp(),
-                )
-            )
+            tx.update(docRef, mapOf(
+                "cards" to updated,
+                "turn.guessesMade" to guessesMade,
+                "updatedAt" to FieldValue.serverTimestamp(),
+            ))
         }.await()
     }
 

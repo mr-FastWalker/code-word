@@ -28,6 +28,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,15 +38,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun HomeScreen(
     onRoomReady: (code: String) -> Unit,
-    viewModel: HomeViewModel = viewModel(),
+    viewModel: HomeViewModel,
 ) {
     val state by viewModel.state.collectAsState()
-    var name by rememberSaveable { mutableStateOf("") }
+    val name by viewModel.name.collectAsState()
     var joinCode by rememberSaveable { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -68,10 +69,11 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = 32.dp)
+                .padding(top = 72.dp, bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = "Code-Word",
@@ -83,7 +85,7 @@ fun HomeScreen(
 
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = viewModel::onNameChange,
                 label = { Text("Ваше имя") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(

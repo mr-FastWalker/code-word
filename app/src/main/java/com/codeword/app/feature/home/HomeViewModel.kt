@@ -25,6 +25,11 @@ class HomeViewModel(
     private val _state = MutableStateFlow<HomeState>(HomeState.Idle)
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
+    private val _name = MutableStateFlow("")
+    val name: StateFlow<String> = _name.asStateFlow()
+
+    fun onNameChange(value: String) { _name.value = value }
+
     fun createRoom(name: String) {
         val trimmed = name.trim()
         if (trimmed.isBlank()) { _state.value = HomeState.Error("Введите имя"); return }
@@ -53,8 +58,10 @@ class HomeViewModel(
                 _state.value = HomeState.Done(trimmedCode)
             } catch (e: RoomError.NotFound) {
                 _state.value = HomeState.Error("Комната '$trimmedCode' не найдена")
+            } catch (e: RoomError.GameInProgress) {
+                _state.value = HomeState.Error("Комната закрыта — игра уже идёт")
             } catch (e: RoomError.NotWaiting) {
-                _state.value = HomeState.Error("Игра в этой комнате уже началась")
+                _state.value = HomeState.Error("Игра в этой комнате уже завершена")
             } catch (e: Exception) {
                 _state.value = HomeState.Error(e.message ?: "Ошибка")
             }
@@ -63,6 +70,10 @@ class HomeViewModel(
 
     fun resetError() {
         if (_state.value is HomeState.Error) _state.value = HomeState.Idle
+    }
+
+    fun reset() {
+        _state.value = HomeState.Idle
     }
 
     private fun requireUid(): String =

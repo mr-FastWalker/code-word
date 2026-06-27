@@ -54,6 +54,7 @@ fun DocumentSnapshot.toRoom(): Room {
         ),
         winner = (data["winner"] as? String)?.toTeamOrNull(),
         winReason = (data["winReason"] as? String)?.toWinReasonOrNull(),
+        isPrivate = data["isPrivate"] as? Boolean ?: false,
     )
 }
 
@@ -123,7 +124,8 @@ private fun String?.toGamePhase() = when (this) {
 
 private fun String?.toRole() = when (this) {
     "spymaster" -> Role.SPYMASTER
-    else -> Role.OPERATIVE
+    "operative" -> Role.OPERATIVE
+    else -> Role.SPECTATOR
 }
 
 private fun String?.toCardColor() = when (this) {
