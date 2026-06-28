@@ -20,6 +20,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,16 +31,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.codeword.app.core.model.GameStatus
 import com.codeword.app.core.model.Player
 import com.codeword.app.core.model.Role
@@ -72,36 +79,56 @@ fun LobbyScreen(
     val myPlayer = players[uid]
     val isHost = room!!.hostUid == uid
 
+    val clipboard = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     fun slotOwner(role: Role, team: Team): Player? =
         players.values.find { it.role == role && it.team == team }
 
     val spectators = players.values.filter { it.role == Role.SPECTATOR }
 
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(innerPadding)
             .statusBarsPadding()
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(24.dp))
 
-        Text(
-            text = "Комната",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = roomCode,
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 6.sp,
-        )
-        Text(
-            text = "Поделитесь кодом с друзьями",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.medium)
+                .clickable {
+                    clipboard.setText(AnnotatedString(roomCode))
+                    scope.launch { snackbarHostState.showSnackbar("Код комнаты скопирован") }
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "Комната",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = roomCode,
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 6.sp,
+            )
+            Text(
+                text = "Нажмите, чтобы скопировать",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
@@ -228,6 +255,7 @@ fun LobbyScreen(
         Spacer(Modifier.height(16.dp))
         Spacer(Modifier.navigationBarsPadding())
     }
+    } // Scaffold
 }
 
 // ─── TeamColumn ──────────────────────────────────────────────────────────────

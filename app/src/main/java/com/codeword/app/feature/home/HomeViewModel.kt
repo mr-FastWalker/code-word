@@ -26,10 +26,9 @@ sealed class HomeState {
     data class Error(val message: String) : HomeState()
 }
 
-class HomeViewModel(
-    application: Application,
-    private val roomRepository: RoomRepository = RoomRepositoryImpl(),
-) : AndroidViewModel(application) {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val roomRepository: RoomRepository = RoomRepositoryImpl()
 
     private val _state = MutableStateFlow<HomeState>(HomeState.Idle)
     val state: StateFlow<HomeState> = _state.asStateFlow()
