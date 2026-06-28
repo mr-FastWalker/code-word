@@ -46,7 +46,7 @@ fun CodeWordNavGraph() {
         composable(Routes.HOME) {
             HomeScreen(
                 onRoomReady = { code ->
-                    homeViewModel.resetError()
+                    homeViewModel.reset()
                     navController.navigate(Routes.lobby(code))
                 },
                 viewModel = homeViewModel,

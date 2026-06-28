@@ -1,6 +1,10 @@
 package com.codeword.app.feature.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.codeword.app.data.RoomError
 import com.codeword.app.data.RoomRepository
@@ -9,7 +13,11 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private val Application.prefs by preferencesDataStore(name = "home_prefs")
+private val KEY_NAME = stringPreferencesKey("player_name")
 
 sealed class HomeState {
     object Idle : HomeState()
@@ -19,8 +27,9 @@ sealed class HomeState {
 }
 
 class HomeViewModel(
+    application: Application,
     private val roomRepository: RoomRepository = RoomRepositoryImpl(),
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow<HomeState>(HomeState.Idle)
     val state: StateFlow<HomeState> = _state.asStateFlow()
@@ -28,7 +37,19 @@ class HomeViewModel(
     private val _name = MutableStateFlow("")
     val name: StateFlow<String> = _name.asStateFlow()
 
-    fun onNameChange(value: String) { _name.value = value }
+    init {
+        viewModelScope.launch {
+            val saved = getApplication<Application>().prefs.data.first()[KEY_NAME] ?: ""
+            if (_name.value.isEmpty()) _name.value = saved
+        }
+    }
+
+    fun onNameChange(value: String) {
+        _name.value = value
+        viewModelScope.launch {
+            getApplication<Application>().prefs.edit { it[KEY_NAME] = value }
+        }
+    }
 
     fun createRoom(name: String) {
         val trimmed = name.trim()
